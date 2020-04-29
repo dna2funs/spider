@@ -1,0 +1,25 @@
+{
+  "name": "spider",
+  "version": "1.0.0",
+  "description": "Web Site Spider",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo 'No Test'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dna2funs/spider.git"
+  },
+  "keywords": [
+    "spider"
+  ],
+  "author": "Seven Lju",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/dna2funs/spider/issues"
+  },
+  "homepage": "https://github.com/dna2funs/spider#readme",
+  "dependencies": {
+    "cheerio": "^1.0.0-rc.3"
+  }
+}

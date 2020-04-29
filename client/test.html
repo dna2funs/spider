@@ -1,0 +1,201 @@
+<html>
+   <head>
+      <title>Spider Simple Test</title>
+   </head>
+   <body>
+      <style>
+         input {
+            width: 500px;
+         }
+         textarea {
+            width: 550px;
+         }
+         div#mask {
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            position: fixed;
+            background-color: white;
+            opacity: 0.5;
+            z-index: 9000;
+         }
+         div#list {
+            margin-top: 10px;
+         }
+         .hide {
+            display: none;
+         }
+         div.download-ed {
+            background-color: yellowgreen;
+         }
+         div.download-err {
+            background-color: lightcoral;
+         }
+         div.download-ing {
+            background-color: lightblue;
+         }
+         div.download-x {
+            background-color: white;
+         }
+         .disabled {
+            opacity: 0.3;
+            pointer-events: none;
+         }
+      </style>
+      <div><lable>URL:</lable> <input id="txt_url" /> <button id="btn_download">Download</button></div>
+      <div><label>filter:</label>
+         <div><textarea id="txt_filter" ></textarea></div>
+         <button id="btn_filter_out">FilterOut</button> <button id="btn_clear">Clear</button>
+      </div>
+      <div id="list"></div>
+      <div id="mask" class="hide"></div>
+      <script>
+         var ui = {
+            txt: {
+               url: document.querySelector('#txt_url'),
+               filter: document.querySelector('#txt_filter'),
+            },
+            btn: {
+               download: document.querySelector('#btn_download'),
+               filterOut: document.querySelector('#btn_filter_out'),
+               clear: document.querySelector('#btn_clear'),
+            },
+            list: document.querySelector('#list'),
+            mask: document.querySelector('#mask'),
+         };
+
+         var env = {
+            status: {},
+         };
+
+         function ajax(options) {
+            return new Promise(function (resolve, reject) {
+               var xhr = new XMLHttpRequest(),
+                  payload = null;
+               xhr.open(options.method || 'POST', options.url, true);
+               xhr.addEventListener('readystatechange', function (evt) {
+                  if (evt.target.readyState === 4 /*XMLHttpRequest.DONE*/) {
+                     if (~~(evt.target.status / 100) === 2) {
+                        return resolve(evt.target.response);
+                     } else {
+                        return reject(evt.target.status);
+                     }
+                  }
+               });
+               if (options.json) {
+                  xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+                  payload = JSON.stringify(options.json);
+               }
+               if (options.plain) {
+                  xhr.setRequestHeader("Content-Type", "text/plain");
+                  payload = options.plain;
+               }
+               xhr.send(payload);
+            });
+         }
+
+         function buildStatus() {
+            list.innerHTML = '';
+            var urls = Object.keys(env.status);
+            if (!urls.length) {
+               list.innerHTML = '(No Item)';
+            }
+            urls = urls.sort(function (a, b) { return a<b?-1:1; })
+            urls.forEach(function (url) {
+               var item = env.status[url];
+               var div = document.createElement('div');
+               var t;
+               t = document.createElement('button');
+               t.innerHTML = 'download';
+               t.classList.add('btn-download');
+               if (item.download === 'ed' || item.download === 'ing') t.classList.add('disabled');
+               div.appendChild(t);
+               t = document.createElement('span');
+               t.appendChild(document.createTextNode(url));
+               div.appendChild(t);
+               list.appendChild(div);
+               div.className = 'download-' + item.download;
+            });
+         }
+
+         function fetchStatus() {
+            ui.mask.classList.remove('hide');
+            ajax({
+               url: '/api/v1/spider/status',
+               method: 'GET'
+            }).then(function (contents) {
+               var json = JSON.parse(contents);
+console.log(json);
+               env.status = json;
+               buildStatus();
+               ui.mask.classList.add('hide');
+            });
+         }
+
+         function download() {
+            if (!ui.txt.url.value) return;
+            startDownload(ui.txt.url.value);
+         }
+
+         function startDownload(url) {
+            ui.mask.classList.remove('hide');
+            ajax({
+               url: '/api/v1/spider/download',
+               method: 'POST',
+               plain: url
+            }).then(function () {
+               fetchStatus();
+            }, function (err) {
+               ui.mask.classList.add('hide');
+               console.log(err);
+            });
+         }
+
+         function filterOutList() {
+            if (!ui.txt.filter.value.trim()) return;
+            ui.mask.classList.remove('hide');
+            ajax({
+               url: '/api/v1/spider/exclude',
+               method: 'POST',
+               plain: ui.txt.filter.value
+            }).then(function () {
+               fetchStatus();
+            }, function (err) {
+               ui.mask.classList.add('hide');
+               console.log(err);
+            });
+         }
+
+         function clearList() {
+            ui.mask.classList.remove('hide');
+            ajax({
+               url: '/api/v1/spider/empty',
+               method: 'POST'
+            }).then(function () {
+               fetchStatus();
+            }, function (err) {
+               ui.mask.classList.add('hide');
+               console.log(err);
+            });
+         }
+
+         function listClick(evt) {
+            if (evt.target.classList.contains('btn-download')) return itemDownload(evt);
+         }
+
+         function itemDownload(evt) {
+            var url = evt.target.nextSibling.innerText;
+            if (!url) return;
+            startDownload(url);
+         }
+
+         ui.btn.download.addEventListener('click', download);
+         ui.btn.filterOut.addEventListener('click', filterOutList);
+         ui.btn.clear.addEventListener('click', clearList);
+         ui.list.addEventListener('click', listClick);
+
+         fetchStatus();
+      </script>
+   </body>
+</html>
