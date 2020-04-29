@@ -38,6 +38,9 @@
          div.download-x {
             background-color: white;
          }
+         div.download-y {
+            background-color: lightyellow;
+         }
          .disabled {
             opacity: 0.3;
             pointer-events: none;
@@ -126,7 +129,6 @@
                method: 'GET'
             }).then(function (contents) {
                var json = JSON.parse(contents);
-console.log(json);
                env.status = json;
                buildStatus();
                ui.mask.classList.add('hide');

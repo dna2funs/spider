@@ -62,6 +62,13 @@ function processContents(url, metaObj) {
    }
 }
 
+async function checkStatus(url) {
+   if (await i_storage.doesDataExists(url)) {
+      if (!downloadObj.status[url]) return;
+      downloadObj.status[url].download = 'y';
+   }
+}
+
 async function processAddToList(list, url) {
    list = await i_filter.filterOut(list, url, [
       (_baseUrl, href) => i_filter.util.doesPointToSelf(href)
@@ -73,6 +80,7 @@ async function processAddToList(list, url) {
          statusObj = { download: 'x' };
          downloadObj.status[url] = statusObj;
       }
+      checkStatus(url);
    });
 }
 
