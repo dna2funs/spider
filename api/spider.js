@@ -54,7 +54,9 @@ function filterOutStatus(line) {
 }
 
 function processContents(url, metaObj) {
-   switch(metaObj.contentType) {
+   let contentType = metaObj.contentType;
+   contentType = contentType.split(';')[0].trim();
+   switch(contentType) {
       case 'text/html':
          return processContentsForHtml(url);
       case 'text/css':

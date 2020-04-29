@@ -1,6 +1,5 @@
 const i_http = require('http');
 const i_https = require('https');
-const i_fs = require('fs');
 
 const i_storage = require('./storage');
 const i_filter = require('./filter');
@@ -34,7 +33,7 @@ async function download(url, options, filename) {
                break;
             case 301: case 302: case 304:
                obj.redirect = res.headers['location'];
-               resovle(obj);
+               resolve(obj);
                return;
             case 200: case 201: case 204:
                obj.contentType = res.headers['content-type'] || 'application/octet-stream';
