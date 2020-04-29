@@ -153,6 +153,7 @@ const api = {
             }
             filterOutStatus(line);
          });
+         res.end('ok');
       });
    }, // include
    exclude: async (req, res, _options) => {
@@ -170,6 +171,7 @@ const api = {
             if (!line || line.startsWith('#')) return;
             filterOutStatus(line);
          });
+         res.end('ok');
       });
    }, // exclude
    empty: async (req, res, _options) => {

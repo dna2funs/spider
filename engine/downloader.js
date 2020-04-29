@@ -38,9 +38,13 @@ async function download(url, options, filename) {
                return;
             case 200: case 201: case 204:
                obj.contentType = res.headers['content-type'] || 'application/octet-stream';
-               let stream = i_fs.createWriteStream(filename);
-               res.on('end', () => {
-                  stream.close();
+               let bufs = [];
+               res.on('data', (data) => {
+                  // TODO: limit buf size
+                  bufs.push(data);
+               });
+               res.on('end', async () => {
+                  await i_storage.write(filename, Buffer.concat(bufs));
                   resolve(obj);
                });
                res.on('error', (err) => {
@@ -49,7 +53,6 @@ async function download(url, options, filename) {
                   obj.details = err;
                   reject(obj);
                });
-               res.pipe(stream);
                return;
          }
          obj.statusCode = res.statusCode;
