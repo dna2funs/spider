@@ -53,6 +53,63 @@ function filterOutStatus(line) {
    }
 }
 
+function processContents(url, metaObj) {
+   switch(metaObj.contentType) {
+      case 'text/html':
+         return processContentsForHtml(url);
+      case 'text/css':
+         return processContentsForCss(url);
+   }
+}
+
+async function processAddToList(list, url) {
+   list = await i_filter.filterOut(list, url, [
+      (_baseUrl, href) => i_filter.util.doesPointToSelf(href)
+   ]);
+   list = list.map((href) => i_filter.util.resolveUrl(url, href));
+   list.forEach((url) => {
+      let statusObj = downloadObj.status[url];
+      if (!statusObj) {
+         statusObj = { download: 'x' };
+         downloadObj.status[url] = statusObj;
+      }
+   });
+}
+
+async function processContentsForHtml(url) {
+   const dataname = await i_storage.getDataFilenameByUrl(url);
+   const html = await i_filter.loadHtml(dataname);
+   let list = await i_filter.getBasicList(html);
+   await processAddToList(list, url);
+}
+
+async function processContentsForCss(url) {
+   const dataname = await i_storage.getDataFilenameByUrl(url);
+   const cssText = (await i_storage.read(dataname)).toString();
+   const urlOps = cssText.match(/url\s*[(]\s*[^ \t);]+[ \t)]/g);
+   let list = [];
+   if (!urlOps) return;
+   urlOps.forEach((op) => {
+      let i = op.indexOf('(');
+      // e.g. url(...) -> ...)
+      op = op.substring(i + 1);
+      let ch = op.charAt(0);
+      i = 0;
+      if (ch === '"' || ch === "'") i = op.lastIndexOf(ch);
+      if (i > 0) {
+         // e.g. "www.google.com")
+         op = op.substring(1, i);
+      } else {
+         // e.g. www.googl.com)
+         if (op.charAt(op.length - 1) === ')') op = op.substring(0, op.length - 1);
+         op = op.trim();
+      }
+      if (op.startsWith('data:')) return;
+      list.push(op);
+   });
+   await processAddToList(list, url);
+}
+
 const downloadObj = {
    status: {
       // <url>: { download: 'x'/'ing'/'ed'/'err' }
@@ -116,20 +173,7 @@ const api = {
             }
 
             downloadObj.status[url].download = 'ed';
-            const dataname = await i_storage.getDataFilenameByUrl(url);
-            const html = await i_filter.loadHtml(dataname);
-            let list = await i_filter.getBasicList(html);
-            list = await i_filter.filterOut(list, url, [
-               (_baseUrl, href) => i_filter.util.doesPointToSelf(href)
-            ]);
-            list = list.map((href) => i_filter.util.resolveUrl(url, href));
-            list.forEach((url) => {
-               let statusObj = downloadObj.status[url];
-               if (!statusObj) {
-                  statusObj = { download: 'x' };
-                  downloadObj.status[url] = statusObj;
-               }
-            });
+            processContents(url, metaObj);
          } // postDownload
       });
    }, // download
