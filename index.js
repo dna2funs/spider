@@ -3,23 +3,9 @@ const i_path = require('path');
 const i_url = require('url');
 
 const i_env = require('./env');
-const i_api_spider = require('./api/spider')
-
-const Mime = {
-   '.html': 'text/html',
-   '.css': 'text/css',
-   '.js': 'text/javascript',
-   '.svg': 'image/svg+xml',
-   '.json': 'application/json',
-   _default: 'text/plain',
-   lookup: (filename) => {
-      let ext = i_path.extname(filename);
-      if (!ext) return Mime._default;
-      let content_type = Mime[ext];
-      if (!content_type) content_type = Mime._default;
-      return content_type;
-   }
-};
+const i_mimetype = require('./util/mimetype');
+const i_api_spider = require('./api/spider');
+const i_api_viewer = require('./api/viewer');
 
 const Cache = {
    maxSize: 128 * 1024 * 1024, /* 128 MB */
@@ -84,10 +70,7 @@ function serveStatic (res, base, path) {
    if (!path.join('')) path = ['index.html'];
    if (!Cache.pool) Cache.pool = {};
    let filename = i_path.join(base, ...path);
-   let mimetype = Mime.lookup(filename);
-   if (mimetype !== Mime._default) {
-      res.setHeader('Content-Type', mimetype);
-   }
+   res.setHeader('Content-Type', i_mimetype.getMimeType(filename));
    let buf = Cache.pool[filename], state;
    if (buf) {
       if (!i_fs.existsSync(filename)) {
@@ -156,6 +139,7 @@ const server = createServer({
          path: `/${options.path.join('/')}`
       }));
    },
+   viewer: i_api_viewer,
    api: {
       v1: {
          spider: i_api_spider,

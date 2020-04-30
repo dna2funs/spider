@@ -67,7 +67,9 @@ function processContents(url, metaObj) {
 async function checkStatus(url) {
    if (await i_storage.doesDataExists(url)) {
       if (!downloadObj.status[url]) return;
-      downloadObj.status[url].download = 'y';
+      if (!downloadObj.status[url].download || downloadObj.status[url].download == 'x') {
+         downloadObj.status[url].download = 'y';
+      }
    }
 }
 

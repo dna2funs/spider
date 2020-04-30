@@ -10,36 +10,20 @@ const api = {
       return i_filesytem.doesExist(filename);
    },
    getDataFilenameByUrl: async (url) => {
-      // e.g. http://www.nothing.com:8080/test.txt => <base>/_data/http/www.nothing.com$3A8080/test.txt
-      const database = i_path.join(i_env.storage.base, '_data');
-      const urlObj = i_url.parse(url);
-
-      if (!urlObj.protocol) urlObj.protocol = 'file:';
-      urlObj.protocol = urlObj.protocol.substring(0, urlObj.protocol.length - 1);
-      if (!urlObj.host) urlObbj.host = '';
-      if (!urlObj.pathname) urlObj.pathname = '/';
-      if (urlObj.pathname.endsWith('/')) urlObj.pathname += 'index.html';
-      let filename = i_path.join(
-         database,
-         urlObj.protocol,
-         encodeURIComponent(urlObj.host),
-         ...urlObj.pathname.split('/').filter((x) => !!x).map((x) => encodeURIComponent(x))
-      );
-      filename += (
-         encodeURIComponent(urlObj.search || '') +
-         encodeURIComponent(urlObj.hash || '')
-      );
-      return filename;
+      return await api.getFilenameByUrl(url, '_data');
    },
    getMetaFilennameByUrl: async (url) => {
+      return await api.getFilenameByUrl(url, '_meta');
+   },
+   getFilenameByUrl: async (url, type) => {
       // e.g. http://www.nothing.com:8080/test.txt => <base>/_data/http/www.nothing.com$3A8080/test.txt/_
       // e.g. http://www.nothing.com/_/test.txt => <base>/_data/http/www.nothing.com$3A8080/__/test.txt/_
-      const metabase = i_path.join(i_env.storage.base, '_meta');
+      const metabase = i_path.join(i_env.storage.base, type);
       const urlObj = i_url.parse(url);
 
       if (!urlObj.protocol) urlObj.protocol = 'file:';
       urlObj.protocol = urlObj.protocol.substring(0, urlObj.protocol.length - 1);
-      if (!urlObj.host) urlObbj.host = '';
+      if (!urlObj.host) urlObj.host = '';
       if (!urlObj.pathname) urlObj.pathname = '/';
       if (urlObj.pathname.endsWith('/')) urlObj.pathname += 'index.html';
       let filename = i_path.join(
@@ -60,29 +44,14 @@ const api = {
       return filename;
    },
    getUrlByDataFilename: async (filename) => {
-      if (!filename) return '';
-      const database = i_path.join(i_env.storage.base, '_data') + i_filesytem.sep;
-      filename = i_path.resolve(filename);
-      if (!filename.startsWith(database)) return '';
-      filename = filename.substring(database.length);
-      const parts = filename.split(i_filesytem.sep);
-      const protocol = parts.shift();
-      const host = parts.shift();
-      if (!protocol || !host) return '';
-      const urlPath = parts.map(
-         (x) => decodeURIComponent(x)
-      ).join('/');
-      let url = `${decodeURIComponent(host)}/${urlPath}`;
-      if (protocol === 'file') {
-         url = `file:///${url}`;
-      } else {
-         url = `${protocol}://${url}`;
-      }
-      return url;
+      return await api.getUrlByFilename(filename, '_data');
    },
    getUrlByMetaFilename: async (filename) => {
+      return await api.getUrlByFilename(filename, '_meta');
+   },
+   getUrlByFilename: async (filename, type) => {
       if (!filename) return '';
-      const metabase = i_path.join(i_env.storage.base, '_meta') + i_filesytem.sep;
+      const metabase = i_path.join(i_env.storage.base, type) + i_filesytem.sep;
       filename = i_path.resolve(filename);
       if (!filename.startsWith(metabase)) return '';
       filename = filename.substring(metabase.length);
