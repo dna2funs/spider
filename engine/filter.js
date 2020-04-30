@@ -1,7 +1,6 @@
 const i_url = require('url');
-const i_cheerio = require('cheerio');
 
-const i_storage = require('./storage');
+const i_parser_html = require('../util/parser/html');
 
 function pointToSelf(href) {
    if (!href) return true;
@@ -49,57 +48,12 @@ function filterByRules(rules, baseUrl, href) {
 }
 
 const api = {
-   loadHtml: async (filename) => {
-      const html = (await i_storage.read(filename)).toString();
-      return i_cheerio.load(html);
-   },
-   getBasicList: async (html) => {
-      const a_list = html('a').map((_, elem) => {
-         return html(elem).attr('href');
-      }).get();
-      const img_list = html('img').map((_, elem) => {
-         return html(elem).attr('src');
-      }).get();
-      const link_list = html('link').map((_, elem) => {
-         return html(elem).attr('href');
-      }).get();
-      const script_list = html('script').map((_, elem) => {
-         return html(elem).attr('src');
-      }).get();
-      const style_list = [];
-      let style_elem = html('style').map((_, elem) => html(elem)).get();
-      for (let i = 0, n = style_elem.length; i < n; i++) {
-         (await api.getListInCSS(style_elem[i].html())).forEach((url) => style_list.push(url));
-      }
-      style_elem = html('[style]').map((_, elem) => html(elem)).get();
-      for (let i = 0, n = style_elem.length; i < n; i++) {
-         (await api.getListInCSS(style_elem[i].attr('style'))).forEach((url) => style_list.push(url));
-      }
-      const list = a_list.concat(img_list).concat(link_list).concat(script_list).concat(style_list);
+   getBasicList: async (htmlText) => {
+      const list = i_parser_html.markUrlForHtml(htmlText).map((item) => item.href);
       return list;
    },
    getListInCSS: async (cssText) => {
-      const urlOps = cssText.match(/url\s*[(]\s*[^ \t)]+[ \t)]/g);
-      let list = [];
-      if (!urlOps) return list;
-      urlOps.forEach((op) => {
-         let i = op.indexOf('(');
-         // e.g. url(...) -> ...)
-         op = op.substring(i + 1);
-         let ch = op.charAt(0);
-         i = 0;
-         if (ch === '"' || ch === "'") i = op.lastIndexOf(ch);
-         if (i > 0) {
-            // e.g. "www.google.com")
-            op = op.substring(1, i);
-         } else {
-            // e.g. www.googl.com)
-            if (op.charAt(op.length - 1) === ')') op = op.substring(0, op.length - 1);
-            op = op.trim();
-         }
-         if (op.startsWith('data:')) return;
-         list.push(op);
-      });
+      const list = i_parser_html.markUrlForCss(cssText).map((item) => item.href);
       return list;
    },
    filterIn: async (list, baseUrl, rules) => {

@@ -3,6 +3,8 @@ const i_path = require('path');
 const i_downloader = require('../engine/downloader');
 const i_storage = require('../engine/storage');
 const i_filter = require('../engine/filter');
+const i_resolver = require('../engine/resolver');
+const i_mimetype = require('../util/mimetype');
 
 function filterOutStatus(line) {
    // cmd should not be empty and startsWith #
@@ -92,8 +94,8 @@ async function processAddToList(list, url) {
 
 async function processContentsForHtml(url) {
    const dataname = await i_storage.getDataFilenameByUrl(url);
-   const html = await i_filter.loadHtml(dataname);
-   let list = await i_filter.getBasicList(html);
+   const htmlText = (await i_storage.read(dataname)).toString();
+   let list = await i_filter.getBasicList(htmlText);
    await processAddToList(list, url);
 }
 
@@ -187,8 +189,43 @@ const api = {
          data += chunk.toString();
       });
       req.on('end', async () => {
-         if (!data) res.end('emtpy');
-         res.end('TODO: resolve href, src, url(), ...')
+         if (!data) return res.end('emtpy');
+         if (!downloadObj.status[data]) return res.end('notfound');
+         if (!(await i_storage.doesDataExists(data))) return res.end('notfound');
+         const metaname = i_path.join(await i_storage.getMetaFilennameByUrl(data), '_mime');
+         let mimetype;
+         try {
+            mimetype = (await i_storage.read(metaname)).toString();
+         } catch (err) {}
+         mimetype = mimetype || i_mimetype.getMimeType(data) || 'text/plain';
+         // to make things simple, assume this api attached to /viewer
+         let resolver = null;
+         switch (mimetype) {
+            case 'text/html':
+               resolver = i_resolver.resolveUrlForHtml;
+               break;
+            case 'text/css':
+               resolver = i_resolver.resolveUrlForCss;
+               break;
+            default:
+               res.end('notsupport');
+               return;
+         }
+         let step = 'start';
+         try {
+            const dataname = await i_storage.getDataFilenameByUrl(data);
+            step = 'read';
+            let text = (await i_storage.read(dataname)).toString();
+            step = 'resolve';
+            text = await resolver(text, data, '/viewer');
+            step = 'write';
+            await i_storage.write(dataname, text);
+            step = 'status';
+            downloadObj.status[data].resolve = 'ok';
+            res.end('ok');
+         } catch(err) {
+            res.end(`error:${step}`);
+         }
       });
    }, // resolve
    include: async (req, res, _options) => {

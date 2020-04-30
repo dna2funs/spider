@@ -41,6 +41,9 @@
          div.download-y {
             background-color: lightyellow;
          }
+         div.download-resolved {
+            background-color: gold;
+         }
          .disabled {
             opacity: 0.3;
             pointer-events: none;
@@ -123,12 +126,13 @@
                t.innerHTML = 'resolve';
                t.classList.add('btn-resolve');
                if (item.download !== 'ed' && item.download !== 'y') t.classList.add('disabled');
+               if (item.resovle) t.classList.add('disabled');
                div.appendChild(t);
                t = document.createElement('span');
                t.appendChild(document.createTextNode(url));
                div.appendChild(t);
                list.appendChild(div);
-               div.className = 'download-' + item.download;
+               div.className = 'download-' + (item.resolve?'resolved':item.download);
             });
          }
 
