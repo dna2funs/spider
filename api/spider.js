@@ -1,3 +1,5 @@
+const i_path = require('path');
+
 const i_downloader = require('../engine/downloader');
 const i_storage = require('../engine/storage');
 const i_filter = require('../engine/filter');
@@ -67,7 +69,7 @@ function processContents(url, metaObj) {
 async function checkStatus(url) {
    if (await i_storage.doesDataExists(url)) {
       if (!downloadObj.status[url]) return;
-      if (!downloadObj.status[url].download || downloadObj.status[url].download == 'x') {
+      if (!downloadObj.status[url].download || downloadObj.status[url].download === 'x') {
          downloadObj.status[url].download = 'y';
       }
    }
@@ -98,27 +100,7 @@ async function processContentsForHtml(url) {
 async function processContentsForCss(url) {
    const dataname = await i_storage.getDataFilenameByUrl(url);
    const cssText = (await i_storage.read(dataname)).toString();
-   const urlOps = cssText.match(/url\s*[(]\s*[^ \t);]+[ \t)]/g);
-   let list = [];
-   if (!urlOps) return;
-   urlOps.forEach((op) => {
-      let i = op.indexOf('(');
-      // e.g. url(...) -> ...)
-      op = op.substring(i + 1);
-      let ch = op.charAt(0);
-      i = 0;
-      if (ch === '"' || ch === "'") i = op.lastIndexOf(ch);
-      if (i > 0) {
-         // e.g. "www.google.com")
-         op = op.substring(1, i);
-      } else {
-         // e.g. www.googl.com)
-         if (op.charAt(op.length - 1) === ')') op = op.substring(0, op.length - 1);
-         op = op.trim();
-      }
-      if (op.startsWith('data:')) return;
-      list.push(op);
-   });
+   const list = await i_filter.getListInCSS(cssText);
    await processAddToList(list, url);
 }
 
@@ -169,26 +151,46 @@ const api = {
                // TODO: handle with dead redirect loop
                //       A --> B, B --> C, C --> A
                try {
-                  const filename = await i_storage.getDataFilenameByUrl(metaObj.redirect);
-                  if (!filename) throw 'InvalidUrl';
-                  await i_storage.prepare(filename);
+                  const dataname = await i_storage.getDataFilenameByUrl(metaObj.redirect);
+                  if (!dataname) throw 'InvalidUrl';
+                  await i_storage.prepare(dataname);
                   let statusObj = downloadObj.status[metaObj.redirect];
                   if (!statusObj) statusObj = { download: 'ing' };
                   downloadObj.status[metaObj.redirect] = statusObj;
-                  const anotherMetaObj = await i_storage.download(metaObj.redirect, {}, filename);
-                  /* parallel */ postDownload(metaObj.redirect, anotherMetaObj);
+                  const anotherMetaObj = await i_storage.download(metaObj.redirect, {}, dataname);
+                  /* parallel */ postDownload(url, anotherMetaObj);
                } catch(err) {
                   downloadObj.status[url].download = 'err';
                }
-               delete downloadObj.status[url];
                return;
             }
 
             downloadObj.status[url].download = 'ed';
+            if (metaObj.contentType) {
+               const metaname = await i_storage.getMetaFilennameByUrl(url);
+               const mimefile = i_path.join(metaname, '_meta');
+               await i_storage.prepare(mimefile);
+               await i_storage.write(mimefile, metaObj.contentType);
+            }
             processContents(url, metaObj);
          } // postDownload
       });
    }, // download
+   resolve: async (req, res, _options) => {
+      if (req.method.toLowerCase() !== 'post') {
+         res.writeHead(403, 'Forbidden');
+         res.end();
+         return;
+      }
+      let data = '';
+      req.on('data', (chunk) => {
+         data += chunk.toString();
+      });
+      req.on('end', async () => {
+         if (!data) res.end('emtpy');
+         res.end('TODO: resolve href, src, url(), ...')
+      });
+   }, // resolve
    include: async (req, res, _options) => {
       if (req.method.toLowerCase() !== 'post') {
          res.writeHead(403, 'Forbidden');

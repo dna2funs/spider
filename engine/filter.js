@@ -54,19 +54,52 @@ const api = {
       return i_cheerio.load(html);
    },
    getBasicList: async (html) => {
-      const a_list = html('a').map((i, elem) => {
+      const a_list = html('a').map((_, elem) => {
          return html(elem).attr('href');
       }).get();
-      const img_list = html('img').map((i, elem) => {
+      const img_list = html('img').map((_, elem) => {
          return html(elem).attr('src');
       }).get();
-      const link_list = html('link').map((i, elem) => {
+      const link_list = html('link').map((_, elem) => {
          return html(elem).attr('href');
       }).get();
-      const script_list = html('script').map((i, elem) => {
+      const script_list = html('script').map((_, elem) => {
          return html(elem).attr('src');
       }).get();
-      const list = a_list.concat(img_list).concat(link_list).concat(script_list);
+      const style_list = [];
+      let style_elem = html('style').map((_, elem) => html(elem)).get();
+      for (let i = 0, n = style_elem.length; i < n; i++) {
+         (await api.getListInCSS(style_elem[i].html())).forEach((url) => style_list.push(url));
+      }
+      style_elem = html('[style]').map((_, elem) => html(elem)).get();
+      for (let i = 0, n = style_elem.length; i < n; i++) {
+         (await api.getListInCSS(style_elem[i].attr('style'))).forEach((url) => style_list.push(url));
+      }
+      const list = a_list.concat(img_list).concat(link_list).concat(script_list).concat(style_list);
+      return list;
+   },
+   getListInCSS: async (cssText) => {
+      const urlOps = cssText.match(/url\s*[(]\s*[^ \t)]+[ \t)]/g);
+      let list = [];
+      if (!urlOps) return list;
+      urlOps.forEach((op) => {
+         let i = op.indexOf('(');
+         // e.g. url(...) -> ...)
+         op = op.substring(i + 1);
+         let ch = op.charAt(0);
+         i = 0;
+         if (ch === '"' || ch === "'") i = op.lastIndexOf(ch);
+         if (i > 0) {
+            // e.g. "www.google.com")
+            op = op.substring(1, i);
+         } else {
+            // e.g. www.googl.com)
+            if (op.charAt(op.length - 1) === ')') op = op.substring(0, op.length - 1);
+            op = op.trim();
+         }
+         if (op.startsWith('data:')) return;
+         list.push(op);
+      });
       return list;
    },
    filterIn: async (list, baseUrl, rules) => {

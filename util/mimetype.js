@@ -21,7 +21,7 @@ function getMimeType(url) {
    const urlObj = i_url.parse(url);
    if (urlObj.pathname && urlObj.pathname.endsWith('/')) return 'text/html';
    const extname = i_path.extname(urlObj.pathname).split('.').pop();
-   return mimeTypeMap[extname] || 'text/plain';
+   return mimeTypeMap[extname];
 }
 
 module.exports = {

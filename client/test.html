@@ -100,19 +100,29 @@
 
          function buildStatus() {
             list.innerHTML = '';
+            var btn_refresh = document.createElement('button');
+            btn_refresh.innerHTML = 'refresh';
+            btn_refresh.className = 'btn-refresh';
+            list.appendChild(btn_refresh);
             var urls = Object.keys(env.status);
             if (!urls.length) {
-               list.innerHTML = '(No Item)';
+               list.appendChild(document.createTextNode(' (No Item)'));
             }
             urls = urls.sort(function (a, b) { return a<b?-1:1; })
             urls.forEach(function (url) {
                var item = env.status[url];
                var div = document.createElement('div');
+               div.setAttribute('data-url', url);
                var t;
                t = document.createElement('button');
                t.innerHTML = 'download';
                t.classList.add('btn-download');
                if (item.download === 'ed' || item.download === 'ing') t.classList.add('disabled');
+               div.appendChild(t);
+               t = document.createElement('button');
+               t.innerHTML = 'resolve';
+               t.classList.add('btn-resolve');
+               if (item.download !== 'ed' && item.download !== 'y') t.classList.add('disabled');
                div.appendChild(t);
                t = document.createElement('span');
                t.appendChild(document.createTextNode(url));
@@ -154,6 +164,20 @@
             });
          }
 
+         function startResolve(url) {
+            ui.mask.classList.remove('hide');
+            ajax({
+               url: '/api/v1/spider/resolve',
+               method: 'POST',
+               plain: url
+            }).then(function () {
+               fetchStatus();
+            }, function (err) {
+               ui.mask.classList.add('hide');
+               console.log(err);
+            });
+         }
+
          function filterOutList() {
             if (!ui.txt.filter.value.trim()) return;
             ui.mask.classList.remove('hide');
@@ -183,13 +207,21 @@
          }
 
          function listClick(evt) {
+            if (evt.target.classList.contains('btn-refresh')) return fetchStatus();
             if (evt.target.classList.contains('btn-download')) return itemDownload(evt);
+            if (evt.target.classList.contains('btn-resolve')) return itemResolve(evt);
          }
 
          function itemDownload(evt) {
-            var url = evt.target.nextSibling.innerText;
+            var url = evt.target.parentNode.getAttribute('data-url');
             if (!url) return;
             startDownload(url);
+         }
+
+         function itemResolve(evt) {
+            var url = evt.target.parentNode.getAttribute('data-url');
+            if (!url) return;
+            startResolve(url);
          }
 
          ui.btn.download.addEventListener('click', download);

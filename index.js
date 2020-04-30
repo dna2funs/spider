@@ -70,7 +70,7 @@ function serveStatic (res, base, path) {
    if (!path.join('')) path = ['index.html'];
    if (!Cache.pool) Cache.pool = {};
    let filename = i_path.join(base, ...path);
-   res.setHeader('Content-Type', i_mimetype.getMimeType(filename));
+   res.setHeader('Content-Type', i_mimetype.getMimeType(filename) || 'text/plain');
    let buf = Cache.pool[filename], state;
    if (buf) {
       if (!i_fs.existsSync(filename)) {
