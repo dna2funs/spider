@@ -20,7 +20,7 @@ const api = async (req, res, options) => {
       const metaname = i_path.join(await i_storage.getMetaFilennameByUrl(url), '_mime');
       let mimetype;
       try {
-         mimetype = (await i_storage.read(metaname)).toString();
+         mimetype = (await i_storage.read(metaname)).toString().split(';')[0];
       } catch (err) {}
       mimetype = mimetype || i_mimetype.getMimeType(url) || 'text/plain';
       res.setHeader('Content-Type', mimetype);

@@ -170,7 +170,7 @@ const api = {
             downloadObj.status[url].download = 'ed';
             if (metaObj.contentType) {
                const metaname = await i_storage.getMetaFilennameByUrl(url);
-               const mimefile = i_path.join(metaname, '_meta');
+               const mimefile = i_path.join(metaname, '_mime');
                await i_storage.prepare(mimefile);
                await i_storage.write(mimefile, metaObj.contentType);
             }
@@ -195,7 +195,7 @@ const api = {
          const metaname = i_path.join(await i_storage.getMetaFilennameByUrl(data), '_mime');
          let mimetype;
          try {
-            mimetype = (await i_storage.read(metaname)).toString();
+            mimetype = (await i_storage.read(metaname)).toString().split(';')[0];
          } catch (err) {}
          mimetype = mimetype || i_mimetype.getMimeType(data) || 'text/plain';
          // to make things simple, assume this api attached to /viewer
