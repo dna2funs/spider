@@ -1,6 +1,7 @@
 const i_fs = require('fs');
 const i_path = require('path');
 
+const i_env = require('../env');
 const i_storage = require('../engine/storage');
 const i_mimetype = require('../util/mimetype');
 
@@ -11,9 +12,9 @@ const api = async (req, res, options) => {
       return;
    }
    // to make things simple, assume this api attached to /viewer
-   // and change the first / to ://
+   // and we can use env var to change it
    // e.g. /veiwer/https//google.com/?q=test -> https://google.com/?q=test
-   const url = req.url.substring('/viewer/'.length).replace('/', '://');
+   const url = req.url.substring(`${i_env.apiPath.viewer}`.length).replace('/', '://');
    if (await i_storage.doesDataExists(url)) {
       const dataname = await i_storage.getDataFilenameByUrl(url);
       const stream = i_fs.createReadStream(dataname);

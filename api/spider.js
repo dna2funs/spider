@@ -1,5 +1,6 @@
 const i_path = require('path');
 
+const i_env = require('../env');
 const i_downloader = require('../engine/downloader');
 const i_storage = require('../engine/storage');
 const i_filter = require('../engine/filter');
@@ -112,6 +113,13 @@ const downloadObj = {
    },
 };
 
+const codeApi = {
+   parseUrl: async (req) => {},
+   load: async (req, res, _options) => {},
+   save: async (req, res, _options) => {},
+   remove: async (req, res, _options) => {},
+};
+
 const api = {
    download: async (req, res, _options) => {
       if (req.method.toLowerCase() !== 'post') {
@@ -198,7 +206,6 @@ const api = {
             mimetype = (await i_storage.read(metaname)).toString().split(';')[0];
          } catch (err) {}
          mimetype = mimetype || i_mimetype.getMimeType(data) || 'text/plain';
-         // to make things simple, assume this api attached to /viewer
          let resolver = null;
          switch (mimetype) {
             case 'text/html':
@@ -217,7 +224,9 @@ const api = {
             step = 'read';
             let text = (await i_storage.read(dataname)).toString();
             step = 'resolve';
-            text = await resolver(text, data, '/viewer');
+            // to make things simple, assume this api attached to /viewer
+            // and we can use env var to change it
+            text = await resolver(text, data, i_env.apiPath.viewer);
             step = 'write';
             await i_storage.write(dataname, text);
             step = 'status';
@@ -228,6 +237,9 @@ const api = {
          }
       });
    }, // resolve
+   recover: async (req, res, _options) => {
+      // TODO: localized url -> normal
+   },
    include: async (req, res, _options) => {
       if (req.method.toLowerCase() !== 'post') {
          res.writeHead(403, 'Forbidden');
@@ -286,6 +298,19 @@ const api = {
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify(downloadObj.status));
    }, // status
+   code: async (req, res, _options) => {
+      const method = req.method.toLowerCase();
+      if (method === 'get') {
+         return codeApi.read(req, res, _options);
+      } else if (method === 'post') {
+         return codeApi.save(req, res, _options);
+      } else if (method === 'delete') {
+         return codeApi.remove(req, res, _options);
+      } else {
+         res.writeHead(403, 'Forbidden');
+         res.end();
+      }
+   }
 };
 
 module.exports = api;

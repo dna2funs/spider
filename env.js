@@ -13,6 +13,10 @@ const env = {
       // <base>/_data
       // <base>/_meta
    },
+   apiPath: {
+      viewer: process.env.SPIDER_API_VIEWER || '/viewer',
+      code: process.env.SPIDER_API_CODE || '/api/v1/code',
+   },
 };
 
 module.exports = env;
