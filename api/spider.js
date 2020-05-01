@@ -125,7 +125,7 @@ const api = {
       });
       req.on('end', async () => {
          if (!data) return res.end('empty');
-         const url = encodeURI(data);
+         const url = data;
          let statusObj = downloadObj.status[url];
          if (!statusObj) statusObj = { download: 'x' };
          downloadObj.status[url] = statusObj;
