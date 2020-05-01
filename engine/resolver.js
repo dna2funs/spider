@@ -17,7 +17,13 @@ async function patchUrl(baseUrl, text, list, apiPrefix) {
    for (let i = 1, n = parts.length; i < n; i += 2) {
       if (i_filter.util.doesPointToSelf(parts[i])) continue;
       const url = i_filter.util.resolveUrl(baseUrl, parts[i]);
-      if (await i_storage.doesDataExists(url)) {
+      let resolveable = false;
+      if (parts[i].startsWith('/') && !parts[i].startsWith('//')) {
+         resolveable = true;
+      } else if (await i_storage.doesDataExists(url)) {
+         resolveable = true;
+      }
+      if (resolveable) {
          // e.g. apiPrefix = /viewer
          const resolved = `${apiPrefix}/${url.split('://').join('/')}`;
          parts[i] = resolved;
