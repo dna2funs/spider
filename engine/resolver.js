@@ -33,6 +33,12 @@ async function patchUrl(baseUrl, text, list, apiPrefix) {
       if (parts[i].startsWith('/') && !parts[i].startsWith('//')) {
          // check if resovled (doesDataExists); so that we can do incremental resolve
          if (!(await isResolvedUrl(parts[i]))) resolveable = true;
+         // make sure url is available
+         if (!(await i_storage.doesDataExists(url))) {
+            // we can uncomment out below line to convert a local absolute path to full url path; e.g. /lib -> https://somehost/lib
+            // parts[i] = url;
+            resolveable = false;
+         }
       } else if (await i_storage.doesDataExists(url)) {
          resolveable = true;
       }
