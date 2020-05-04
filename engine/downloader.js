@@ -86,10 +86,10 @@ if (require.main === module) {
       );
       console.log(`downloading ${url} ...`);
       await download(url, {}, dataname);
-      console.log(`loading ${url} HTML DOM ...`);
-      const html = await i_filter.loadHtml(dataname);
+      console.log(`loading ${url} HTML ...`);
+      const htmlText = await i_storage.read(dataname);
       console.log(`get links ...`);
-      let list = await i_filter.getBasicList(html);
+      let list = await i_filter.getBasicList(htmlText);
       console.log(`filter links ...`);
       list = await i_filter.filterOut(list, url, [
          (_baseUrl, href) => i_filter.util.doesPointToSelf(href)

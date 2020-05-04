@@ -126,6 +126,11 @@ const api = {
       const stat = await api.lstat(filepath);
       return stat.isSymbolicLink();
    },
+   isEmptyDirectory: async (filepath) => {
+      if (!(await api.isDirectory(filepath))) return false;
+      if ((await api.readdir(filepath)).length) return false;
+      return true;
+   },
    isDirectory: async (filepath) => {
       const stat = await api.stat(filepath);
       return stat.isDirectory();

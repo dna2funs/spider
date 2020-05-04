@@ -7,6 +7,16 @@ const i_filter = require('../engine/filter');
 const i_resolver = require('../engine/resolver');
 const i_mimetype = require('../util/mimetype');
 
+async function getMimeType(url) {
+   const metaname = i_path.join(await i_storage.getMetaFilennameByUrl(url), '_mime');
+   let mimetype;
+   try {
+      mimetype = (await i_storage.read(metaname)).toString().split(';')[0];
+   } catch (err) {}
+   mimetype = mimetype || i_mimetype.getMimeType(url) || 'text/plain';
+   return mimetype;
+}
+
 function filterOutStatus(line) {
    // cmd should not be empty and startsWith #
    let cmd = line.split(' ')[0];
@@ -78,18 +88,30 @@ async function checkStatus(url) {
    }
 }
 
+function addUrl(url) {
+   let statusObj = downloadObj.status[url];
+   if (!statusObj) {
+      statusObj = { download: 'x' };
+      downloadObj.status[url] = statusObj;
+   }
+   checkStatus(url);
+}
+
 async function processAddToList(list, url) {
    list = await i_filter.filterOut(list, url, [
       (_baseUrl, href) => i_filter.util.doesPointToSelf(href)
    ]);
-   list = list.map((href) => i_filter.util.resolveUrl(url, href));
-   list.forEach((url) => {
-      let statusObj = downloadObj.status[url];
-      if (!statusObj) {
-         statusObj = { download: 'x' };
-         downloadObj.status[url] = statusObj;
+   for (let i = 0, n = list.length; i < n; i++) {
+      if (await i_resolver.isResolvedUrl(list[i])) {
+         list[i] = list[i].substring(i_env.apiPath.viewer.length + 1).replace('/', '://');
+      } else if (list[i].startsWith(i_env.apiPath.viewer)) {
+         list[i] = list[i].substring(i_env.apiPath.viewer.length + 1).replace('/', '://');
+      } else {
+         list[i] = i_filter.util.resolveUrl(url, list[i]);
       }
-      checkStatus(url);
+   }
+   list.forEach((url) => {
+      addUrl(url);
    });
 }
 
@@ -114,10 +136,55 @@ const downloadObj = {
 };
 
 const codeApi = {
-   parseUrl: async (req) => {},
-   load: async (req, res, _options) => {},
-   save: async (req, res, _options) => {},
-   remove: async (req, res, _options) => {},
+   // currently load/save only support text file ...
+   parseUrl: async (req) => {
+      if (!req.url.startsWith(i_env.apiPath.code)) return '';
+      const url = req.url.substring(i_env.apiPath.code.length + 1).replace('/', '://');
+      return url;
+   },
+   extractUrls: async(req, res, _options) => {
+      try {
+         const url = await codeApi.parseUrl(req);
+         const mimetype = await getMimeType(url);
+         await processContents(url, { contentType: mimetype });
+         addUrl(url);
+         res.end('ok');
+      } catch(err) {
+         res.end('error');
+      }
+   },
+   load: async (req, res, _options) => {
+      const url = await codeApi.parseUrl(req);
+      const dataname = i_storage.getDataFilenameByUrl(url);
+      res.writeHead('Content-Type', 'text/plain');
+      res.end(await i_storage.read(dataname));
+   },
+   save: async (req, res, _options) => {
+      const url = await codeApi.parseUrl(req);
+      let data = '';
+      req.on('data', (chunk) => {
+         data += chunk.toString();
+      });
+      req.on('end', async () => {
+         const dataname = i_storage.getDataFilenameByUrl(url);
+         await i_storage.write(dataname, data);
+         res.end('ok');
+      });
+   },
+   remove: async (req, res, _options) => {
+      const url = await codeApi.parseUrl(req);
+      const dataname = i_storage.getDataFilenameByUrl(url);
+      const metaname = i_storage.getMetaFilennameByUrl(url);
+      if (await i_storage.remove(dataname)) {
+         if (await i_storage.remove(metaname)) {
+            res.end('ok(with.meta)');
+            return;
+         }
+         res.end('ok(without.meta)');
+         return;
+      }
+      res.end('err');
+   },
 };
 
 const api = {
@@ -167,7 +234,7 @@ const api = {
                   let statusObj = downloadObj.status[metaObj.redirect];
                   if (!statusObj) statusObj = { download: 'ing' };
                   downloadObj.status[metaObj.redirect] = statusObj;
-                  const anotherMetaObj = await i_storage.download(metaObj.redirect, {}, dataname);
+                  const anotherMetaObj = await i_downloader.download(metaObj.redirect, {}, dataname);
                   /* parallel */ postDownload(url, anotherMetaObj);
                } catch(err) {
                   downloadObj.status[url].download = 'err';
@@ -200,12 +267,7 @@ const api = {
          if (!data) return res.end('emtpy');
          if (!downloadObj.status[data]) return res.end('notfound');
          if (!(await i_storage.doesDataExists(data))) return res.end('notfound');
-         const metaname = i_path.join(await i_storage.getMetaFilennameByUrl(data), '_mime');
-         let mimetype;
-         try {
-            mimetype = (await i_storage.read(metaname)).toString().split(';')[0];
-         } catch (err) {}
-         mimetype = mimetype || i_mimetype.getMimeType(data) || 'text/plain';
+         const mimetype = await getMimeType(data);
          let resolver = null;
          switch (mimetype) {
             case 'text/html':
@@ -237,9 +299,41 @@ const api = {
          }
       });
    }, // resolve
-   recover: async (req, res, _options) => {
+   restore: async (req, res, _options) => {
       // TODO: localized url -> normal
-   },
+      let data = '';
+      req.on('data', (chunk) => {
+         data += chunk.toString();
+      });
+      req.on('end', async () => {
+         const mimetype = await getMimeType(data);
+         let restorer = null;
+         switch (mimetype) {
+            case 'text/html':
+               restorer = i_resolver.restoreUrlForHtml;
+               break;
+            case 'text/css':
+               restorer = i_resolver.restoreUrlForCss;
+               break;
+            default:
+               res.end('notsupport');
+               return;
+         }
+         let step = 'start';
+         try {
+            const dataname = await i_storage.getDataFilenameByUrl(data);
+            step = 'read';
+            let text = (await i_storage.read(dataname)).toString();
+            step = 'restore';
+            text = await restorer(text, data, i_env.apiPath.viewer);
+            step = 'write';
+            await i_storage.write(dataname, text);
+            res.end('ok');
+         } catch(err) {
+            res.end(`error:${step}`);
+         }
+      });
+   }, // restore
    include: async (req, res, _options) => {
       if (req.method.toLowerCase() !== 'post') {
          res.writeHead(403, 'Forbidden');
@@ -301,6 +395,9 @@ const api = {
    code: async (req, res, _options) => {
       const method = req.method.toLowerCase();
       if (method === 'get') {
+         if (req.headers['spider-extract-urls']) {
+            return codeApi.extractUrls(req, res, _options);
+         }
          return codeApi.read(req, res, _options);
       } else if (method === 'post') {
          return codeApi.save(req, res, _options);

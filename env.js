@@ -15,7 +15,7 @@ const env = {
    },
    apiPath: {
       viewer: process.env.SPIDER_API_VIEWER || '/viewer',
-      code: process.env.SPIDER_API_CODE || '/api/v1/code',
+      code: process.env.SPIDER_API_CODE || '/api/v1/spider/code',
    },
 };
 

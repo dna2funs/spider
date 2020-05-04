@@ -92,7 +92,20 @@ const api = {
    write: async (filename, data) => {
       api.prepare(filename);
       return await i_filesytem.writeSmallFile(filename, data);
-   }
+   },
+   remove: async (filename) => {
+      if (!(await i_filesytem.doesExist(filenname))) return false;
+      let dirname = filename;
+      dirname = i_path.dirname(dirname);
+      await i_filesytem.rmR(dirname);
+      while (await i_filesytem.isEmptyDirectory(dirname)) {
+         await i_filesytem.rmdir(dirnname);
+         dirname = i_path.dirname(dirname);
+         // prevennt remove root dir
+         if (dirname.length <= i_env.storage.base) break;
+      }
+      return true;
+   },
 };
 
 module.exports = api;

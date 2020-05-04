@@ -10,7 +10,7 @@ async function isResolvedUrl(resolvedUri) {
    return await i_storage.doesDataExists(url);
 }
 
-async function patchUrl(baseUrl, text, list, apiPrefix) {
+async function splitTextByUrlList(text, list) {
    let last = 0;
    const parts = [];
    list.forEach((item) => {
@@ -21,7 +21,11 @@ async function patchUrl(baseUrl, text, list, apiPrefix) {
    const len = text.length;
    if (last < len);
    parts.push(text.substring(last));
+   return parts;
+}
 
+async function patchUrl(baseUrl, text, list, apiPrefix) {
+   const parts = await splitTextByUrlList(text, list);
    for (let i = 1, n = parts.length; i < n; i += 2) {
       if (i_filter.util.doesPointToSelf(parts[i])) continue;
       const url = i_filter.util.resolveUrl(baseUrl, parts[i]);
@@ -42,8 +46,40 @@ async function patchUrl(baseUrl, text, list, apiPrefix) {
    return patched;
 }
 
+async function restoreUrl(baseUrl, text, list, apiPrefix) {
+   const parts = await splitTextByUrlList(text, list);
+   for (let i = 1, n = parts.length; i < n; i += 2) {
+      if (i_filter.util.doesPointToSelf(parts[i])) continue;
+      if (!(await isResolvedUrl(parts[i]))) continue;
+      const url = parts[i].substring(apiPrefix.length + 1).replace('/', '://');
+      if (getSitePrefix(url) === getSitePrefix(baseUrl)) {
+         parts[i] = `/${url.split('/').slice(3).join('/')}`;
+      } else {
+         parts[i] = url;
+      }
+   }
+   const patched = parts.join('');
+   return patched;
+
+   function getSitePrefix(url) {
+      // e.g. http://www.google.com/
+      //        0   1       2        3 
+      return url.split('/').slice(0, 3).join('/');
+   }
+}
+
 const api = {
+   isResolvedUrl,
    patchUrl,
+   restoreUrl,
+   restoreUrlForHtml: async (htmlText, baseUrl, apiPrefix) => {
+      const list = i_parser_html.markUrlForHtml(htmlText);
+      return await restoreUrl(baseUrl, htmlText, list, apiPrefix);
+   },
+   restoreUrlForCss: async (cssText, baseUrl, apiPrefix) => {
+      const list = i_parser_html.markUrlForCss(cssText);
+      return await restoreUrl(baseUrl, cssText, list, apiPrefix);
+   },
    resolveUrlForHtml: async (htmlText, baseUrl, apiPrefix) => {
       const list = i_parser_html.markUrlForHtml(htmlText);
       return await patchUrl(baseUrl, htmlText, list, apiPrefix);

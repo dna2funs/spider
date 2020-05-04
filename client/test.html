@@ -49,7 +49,7 @@
             pointer-events: none;
          }
       </style>
-      <div><lable>URL:</lable> <input id="txt_url" /> <button id="btn_download">Download</button></div>
+      <div><lable>URL:</lable> <input id="txt_url" /> <button id="btn_download">Download</button> <button id="btn_open">Open</button></div>
       <div><label>filter:</label>
          <div><textarea id="txt_filter" ></textarea></div>
          <button id="btn_filter_out">FilterOut</button> <button id="btn_clear">Clear</button>
@@ -60,15 +60,16 @@
          var ui = {
             txt: {
                url: document.querySelector('#txt_url'),
-               filter: document.querySelector('#txt_filter'),
+               filter: document.querySelector('#txt_filter')
             },
             btn: {
                download: document.querySelector('#btn_download'),
                filterOut: document.querySelector('#btn_filter_out'),
                clear: document.querySelector('#btn_clear'),
+               open: document.querySelector('#btn_open')
             },
             list: document.querySelector('#list'),
-            mask: document.querySelector('#mask'),
+            mask: document.querySelector('#mask')
          };
 
          var env = {
@@ -97,6 +98,11 @@
                   xhr.setRequestHeader("Content-Type", "text/plain");
                   payload = options.plain;
                }
+               if (options.headers) {
+                  for (var key in options.headers) {
+                     xhr.setRequestHeader(key, options.headers[key]);
+                  }
+               }
                xhr.send(payload);
             });
          }
@@ -122,12 +128,19 @@
                t.classList.add('btn-download');
                if (item.download === 'ed' || item.download === 'ing') t.classList.add('disabled');
                div.appendChild(t);
+
                t = document.createElement('button');
                t.innerHTML = 'resolve';
                t.classList.add('btn-resolve');
                if (item.download !== 'ed' && item.download !== 'y') t.classList.add('disabled');
-               if (item.resovle) t.classList.add('disabled');
                div.appendChild(t);
+
+               t = document.createElement('button');
+               t.innerHTML = 'restore';
+               t.classList.add('btn-restore');
+               if (item.download !== 'ed' && item.download !== 'y') t.classList.add('disabled');
+               div.appendChild(t);
+
                t = document.createElement('span');
                t.appendChild(document.createTextNode(url));
                div.appendChild(t);
@@ -182,6 +195,20 @@
             });
          }
 
+         function startRestore(url) {
+            ui.mask.classList.remove('hide');
+            ajax({
+               url: '/api/v1/spider/restore',
+               method: 'POST',
+               plain: url
+            }).then(function () {
+               fetchStatus();
+            }, function (err) {
+               ui.mask.classList.add('hide');
+               console.log(err);
+            });
+         }
+
          function filterOutList() {
             if (!ui.txt.filter.value.trim()) return;
             ui.mask.classList.remove('hide');
@@ -214,6 +241,13 @@
             if (evt.target.classList.contains('btn-refresh')) return fetchStatus();
             if (evt.target.classList.contains('btn-download')) return itemDownload(evt);
             if (evt.target.classList.contains('btn-resolve')) return itemResolve(evt);
+            if (evt.target.classList.contains('btn-restore')) return itemRestore(evt);
+         }
+
+         function itemRestore(evt) {
+            var url = evt.target.parentNode.getAttribute('data-url');
+            if (!url) return;
+            startRestore(url);
          }
 
          function itemDownload(evt) {
@@ -228,10 +262,28 @@
             startResolve(url);
          }
 
+         function itemOpen(evt) {
+            if (ui.txt.url.value.indexOf('://') < 0) return;
+            ui.mask.classList.remove('hide');
+            ajax({
+               url: '/api/v1/spider/code/' + ui.txt.url.value.replace('://', '/'),
+               method: 'GET',
+               headers: {
+                  'spider-extract-urls': '1'
+               },
+            }).then(function () {
+               fetchStatus();
+            }, function (err) {
+               ui.mask.classList.add('hide');
+               console.log(err);
+            });
+         }
+
          ui.btn.download.addEventListener('click', download);
          ui.btn.filterOut.addEventListener('click', filterOutList);
          ui.btn.clear.addEventListener('click', clearList);
          ui.list.addEventListener('click', listClick);
+         ui.btn.open.addEventListener('click', itemOpen);
 
          fetchStatus();
       </script>
