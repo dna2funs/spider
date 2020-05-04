@@ -94,7 +94,7 @@ const api = {
       return await i_filesytem.writeSmallFile(filename, data);
    },
    remove: async (filename) => {
-      if (!(await i_filesytem.doesExist(filenname))) return false;
+      if (!(await i_filesytem.doesExist(filename))) return false;
       let dirname = filename;
       dirname = i_path.dirname(dirname);
       await i_filesytem.rmR(dirname);

@@ -155,8 +155,8 @@ const codeApi = {
    },
    load: async (req, res, _options) => {
       const url = await codeApi.parseUrl(req);
-      const dataname = i_storage.getDataFilenameByUrl(url);
-      res.writeHead('Content-Type', 'text/plain');
+      const dataname = await i_storage.getDataFilenameByUrl(url);
+      res.setHeader('Content-Type', 'text/plain');
       res.end(await i_storage.read(dataname));
    },
    save: async (req, res, _options) => {
@@ -166,7 +166,7 @@ const codeApi = {
          data += chunk.toString();
       });
       req.on('end', async () => {
-         const dataname = i_storage.getDataFilenameByUrl(url);
+         const dataname = await i_storage.getDataFilenameByUrl(url);
          await i_storage.write(dataname, data);
          res.end('ok');
       });
@@ -398,7 +398,7 @@ const api = {
          if (req.headers['spider-extract-urls']) {
             return codeApi.extractUrls(req, res, _options);
          }
-         return codeApi.read(req, res, _options);
+         return codeApi.load(req, res, _options);
       } else if (method === 'post') {
          return codeApi.save(req, res, _options);
       } else if (method === 'delete') {

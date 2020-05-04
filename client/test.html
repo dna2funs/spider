@@ -23,6 +23,21 @@
          div#list {
             margin-top: 10px;
          }
+         div.dialog {
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            position: fixed;
+            background-color: white;
+            padding: 10px;
+         }
+         div.dialog-flex {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+         }
          .hide {
             display: none;
          }
@@ -141,6 +156,12 @@
                if (item.download !== 'ed' && item.download !== 'y') t.classList.add('disabled');
                div.appendChild(t);
 
+               t = document.createElement('button');
+               t.innerHTML = 'view';
+               t.classList.add('btn-view');
+               if (item.download === 'ing') t.classList.add('disabled');
+               div.appendChild(t);
+
                t = document.createElement('span');
                t.appendChild(document.createTextNode(url));
                div.appendChild(t);
@@ -242,12 +263,21 @@
             if (evt.target.classList.contains('btn-download')) return itemDownload(evt);
             if (evt.target.classList.contains('btn-resolve')) return itemResolve(evt);
             if (evt.target.classList.contains('btn-restore')) return itemRestore(evt);
+            if (evt.target.classList.contains('btn-view')) return itemView(evt);
          }
 
          function itemRestore(evt) {
             var url = evt.target.parentNode.getAttribute('data-url');
             if (!url) return;
             startRestore(url);
+         }
+
+         function itemView(evt) {
+            var url = evt.target.parentNode.getAttribute('data-url');
+            if (!url) return;
+            buildEditor(url);
+            ui.dialog.classList.remove('hide');
+            readUrlContents(url);
          }
 
          function itemDownload(evt) {
@@ -286,6 +316,121 @@
          ui.btn.open.addEventListener('click', itemOpen);
 
          fetchStatus();
+
+         /////////////////////////////////////// code read/update/delete
+         function buildEditor(url) {
+            if (ui.dialog) {
+               ui.dialog.setAttribute('data-url', url);
+               return;
+            }
+            var div = document.createElement('div');
+            ui.dialog = div;
+            ui.dialog.setAttribute('data-url', url);
+            div.style.zIndex = '5001';
+            div.className = 'dialog';
+            div.classList.add('hide');
+            document.body.appendChild(div);
+
+            div = document.createElement('div');
+            div.className = 'dialog-flex';
+            var t;
+
+            var bar = document.createElement('div');
+
+            t = document.createElement('button');
+            t.innerHTML = 'reload';
+            t.addEventListener('click', function (evt) {
+               const url = ui.dialog.getAttribute('data-url');
+               readUrlContents(url);
+            });
+            bar.appendChild(t);
+
+            t = document.createElement('button');
+            t.innerHTML = 'save';
+            t.addEventListener('click', function (evt) {
+               const url = ui.dialog.getAttribute('data-url');
+               writeUrlContents(url);
+            });
+            bar.appendChild(t);
+
+            t = document.createElement('button');
+            t.innerHTML = 'delete';
+            t.addEventListener('click', function (evt) {
+               const url = ui.dialog.getAttribute('data-url');
+               deleteUrlContents(url);
+            });
+            bar.appendChild(t);
+
+            t = document.createElement('button');
+            t.innerHTML = 'close';
+            t.addEventListener('click', function (evt) {
+               dialogClose();
+            });
+            bar.appendChild(t);
+
+            bar.style.height = '20px';
+            div.appendChild(bar);
+
+            var contents = document.createElement('div');
+            t = document.createElement('textarea');
+            t.className = 'txt-contents';
+            t.style.width = '100%';
+            t.style.height = '100%';
+            contents.appendChild(t);
+            contents.style.flex = 'auto';
+            div.appendChild(contents);
+            ui.dialog.appendChild(div);
+         }
+
+         function readUrlContents(url) {
+            ui.mask.classList.remove('hide');
+            ajax({
+               url: '/api/v1/spider/code/' + url.replace('://', '/'),
+               method: 'GET'
+            }).then(function (text) {
+               ui.mask.classList.add('hide');
+               var contents = document.querySelector('.txt-contents');
+               contents.value = text;
+               console.log(text);
+            }, function (err) {
+               ui.mask.classList.add('hide');
+               console.log(err);
+            });
+         }
+
+         function writeUrlContents(url) {
+            ui.mask.classList.remove('hide');
+            ajax({
+               url: '/api/v1/spider/code/' + url.replace('://', '/'),
+               method: 'POST',
+               plain: document.querySelector('.txt-contents').value
+            }).then(function () {
+               ui.mask.classList.add('hide');
+               alert('saved');
+            }, function (err) {
+               ui.mask.classList.add('hide');
+               console.log(err);
+            });
+         }
+
+         function deleteUrlContents(url) {
+            ui.mask.classList.remove('hide');
+            ajax({
+               url: '/api/v1/spider/code/' + url.replace('://', '/'),
+               method: 'DELETE'
+            }).then(function () {
+               ui.mask.classList.add('hide');
+               dialogClose();
+            }, function (err) {
+               ui.mask.classList.add('hide');
+               console.log(err);
+            });
+         }
+
+         function dialogClose() {
+            ui.dialog.classList.add('hide');
+         }
+
       </script>
    </body>
 </html>
