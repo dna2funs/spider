@@ -14,7 +14,7 @@ const api = async (req, res, options) => {
    // to make things simple, assume this api attached to /viewer
    // and we can use env var to change it
    // e.g. /veiwer/https//google.com/?q=test -> https://google.com/?q=test
-   const url = req.url.substring(`${i_env.apiPath.viewer}`.length).replace('/', '://');
+   const url = req.url.substring(i_env.apiPath.viewer.length + 1).replace('/', '://');
    if (await i_storage.doesDataExists(url)) {
       const dataname = await i_storage.getDataFilenameByUrl(url);
       const stream = i_fs.createReadStream(dataname);

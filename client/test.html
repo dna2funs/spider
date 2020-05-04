@@ -372,11 +372,17 @@
             div.appendChild(bar);
 
             var contents = document.createElement('div');
-            t = document.createElement('textarea');
+            t = document.createElement('pre');
+            t.setAttribute('contenteditable', true)
             t.className = 'txt-contents';
-            t.style.width = '100%';
-            t.style.height = '100%';
+            t.style.minWidth = '100%';
+            t.style.minHeight = '100%';
+            t.style.margin = '0';
             contents.appendChild(t);
+            contents.style.border = '1px solid lightgrey';
+            contents.style.width = '100%';
+            contents.style.height = '100%';
+            contents.style.overflow = 'auto';
             contents.style.flex = 'auto';
             div.appendChild(contents);
             ui.dialog.appendChild(div);
@@ -390,8 +396,8 @@
             }).then(function (text) {
                ui.mask.classList.add('hide');
                var contents = document.querySelector('.txt-contents');
-               contents.value = text;
-               console.log(text);
+               contents.innerHTML = '';
+               contents.appendChild(document.createTextNode(text));
             }, function (err) {
                ui.mask.classList.add('hide');
                console.log(err);
@@ -403,7 +409,7 @@
             ajax({
                url: '/api/v1/spider/code/' + url.replace('://', '/'),
                method: 'POST',
-               plain: document.querySelector('.txt-contents').value
+               plain: document.querySelector('.txt-contents').innerText
             }).then(function () {
                ui.mask.classList.add('hide');
                alert('saved');
