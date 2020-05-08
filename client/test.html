@@ -64,6 +64,7 @@
             pointer-events: none;
          }
       </style>
+      <div>Notice: if request 401 error, add cookie `spider_key=&lt;key&gt;`.</div>
       <div><lable>URL:</lable> <input id="txt_url" /> <button id="btn_download">Download</button> <button id="btn_open">Open</button></div>
       <div><label>filter:</label>
          <div><textarea id="txt_filter" ></textarea></div>
@@ -72,6 +73,20 @@
       <div id="list"></div>
       <div id="mask" class="hide"></div>
       <script>
+         function parseCookies() {
+            var map = {};
+            document.cookie.split(';').forEach(function (one) {
+               var keyval = one.split('=').map(function (x) { return decodeURIComponent(x); });
+               map[keyval[0]] = keyval[1];
+            });
+            return map;
+         }
+
+         var env = {
+            status: {},
+            cookie: parseCookies()
+         };
+
          var ui = {
             txt: {
                url: document.querySelector('#txt_url'),
@@ -85,10 +100,6 @@
             },
             list: document.querySelector('#list'),
             mask: document.querySelector('#mask')
-         };
-
-         var env = {
-            status: {},
          };
 
          function ajax(options) {
@@ -105,6 +116,9 @@
                      }
                   }
                });
+               if (env.cookie.spider_key) {
+                  xhr.setRequestHeader("Authorization", "Basic " + env.cookie.spider_key);
+               }
                if (options.json) {
                   xhr.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
                   payload = JSON.stringify(options.json);

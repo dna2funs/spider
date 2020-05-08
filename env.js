@@ -7,6 +7,7 @@ const env = {
       host: process.env.SPIDER_HOST || '0.0.0.0',
       staticDir: process.env.SPIDER_STATIC_DIR?i_path.resolve(process.env.SPIDER_STATIC_DIR):'',
       httpsCADir: process.env.SPIDER_HTTPS_CA_DIR?i_path.resolve(process.env.SPIDER_HTTPS_CA_DIR):'',
+      staticBasicAuth: process.env.SPIDER_STATIC_ASIC_AUTH,
    },
    storage: {
       base: i_path.resolve(process.env.SPIDER_BASE_DIR || '.'),

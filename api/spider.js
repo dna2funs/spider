@@ -6,6 +6,16 @@ const i_storage = require('../engine/storage');
 const i_filter = require('../engine/filter');
 const i_resolver = require('../engine/resolver');
 const i_mimetype = require('../util/mimetype');
+const i_auth = require('../util/auth');
+
+const authBlock = async (req, res, _options) => {
+   if (!(await i_auth.staticBasic(req))) {
+      res.writeHead(401, 'Not authenticated');
+      res.end();
+      return true;
+   }
+   return false;
+}
 
 async function getMimeType(url) {
    const metaname = i_path.join(await i_storage.getMetaFilennameByUrl(url), '_mime');
@@ -189,6 +199,7 @@ const codeApi = {
 
 const api = {
    download: async (req, res, _options) => {
+      if (await authBlock(req, res, _options)) return;
       if (req.method.toLowerCase() !== 'post') {
          res.writeHead(403, 'Forbidden');
          res.end();
@@ -254,6 +265,7 @@ const api = {
       });
    }, // download
    resolve: async (req, res, _options) => {
+      if (await authBlock(req, res, _options)) return;
       if (req.method.toLowerCase() !== 'post') {
          res.writeHead(403, 'Forbidden');
          res.end();
@@ -300,7 +312,8 @@ const api = {
       });
    }, // resolve
    restore: async (req, res, _options) => {
-      // TODO: localized url -> normal
+      if (await authBlock(req, res, _options)) return;
+      // localized url -> normal
       let data = '';
       req.on('data', (chunk) => {
          data += chunk.toString();
@@ -335,6 +348,7 @@ const api = {
       });
    }, // restore
    include: async (req, res, _options) => {
+      if (await authBlock(req, res, _options)) return;
       if (req.method.toLowerCase() !== 'post') {
          res.writeHead(403, 'Forbidden');
          res.end();
@@ -358,6 +372,7 @@ const api = {
       });
    }, // include
    exclude: async (req, res, _options) => {
+      if (await authBlock(req, res, _options)) return;
       if (req.method.toLowerCase() !== 'post') {
          res.writeHead(403, 'Forbidden');
          res.end();
@@ -376,6 +391,7 @@ const api = {
       });
    }, // exclude
    empty: async (req, res, _options) => {
+      if (await authBlock(req, res, _options)) return;
       if (req.method.toLowerCase() !== 'post') {
          res.writeHead(403, 'Forbidden');
          res.end();
@@ -388,11 +404,13 @@ const api = {
       downloadObj.status = {};
       res.end('ok');
    }, // empty
-   status: async (_req, res, _options) => {
+   status: async (req, res, _options) => {
+      if (await authBlock(req, res, _options)) return;
       res.setHeader('Content-Type', 'application/json');
       res.end(JSON.stringify(downloadObj.status));
    }, // status
    code: async (req, res, _options) => {
+      if (await authBlock(req, res, _options)) return;
       const method = req.method.toLowerCase();
       if (method === 'get') {
          if (req.headers['spider-extract-urls']) {
