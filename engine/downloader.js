@@ -31,8 +31,14 @@ async function download(url, options, filename) {
                   return;
                }
                break;
-            case 301: case 302: case 304:
+            case 301: case 302: case 304: case 307:
                obj.redirect = res.headers['location'];
+               if (!obj.redirect) return reject(obj);
+               if (obj.redirect.startsWith('//')) {
+                  obj.redirect = `${protocol}${obj.redirect}`;
+               } else if (obj.redirect.indexOf('://') < 0) {
+                  obj.redirect = `${protocol}//${obj.redirect}`;
+               }
                resolve(obj);
                return;
             case 200: case 201: case 204:
