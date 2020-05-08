@@ -1,3 +1,4 @@
+const i_url = require('url');
 const i_http = require('http');
 const i_https = require('https');
 
@@ -9,15 +10,12 @@ async function download(url, options, filename) {
       if (!options) options = {};
 
       // rebuild url
+      const urlObj = i_url.parse(url);
       const parts = url.split('//');
-      if (parts[0] === '') {
-         url = `https:${url}`;
-         parts[0] = 'https:';
-      } else if (parts.length === 1) {
-         url = `https://${url}`;
-         parts[0] = 'https:';
+      const protocol = urlObj.protocol;
+      if (!protocol) {
+         return reject(url);
       }
-      const protocol = parts[0];
       const lib = protocol === 'http:'?i_http:i_https;
       const obj = {};
       obj.url = url;
@@ -37,7 +35,7 @@ async function download(url, options, filename) {
                if (obj.redirect.startsWith('//')) {
                   obj.redirect = `${protocol}${obj.redirect}`;
                } else if (obj.redirect.indexOf('://') < 0) {
-                  obj.redirect = `${protocol}//${obj.redirect}`;
+                  obj.redirect = i_url.resolve(url, obj.redirect);
                }
                resolve(obj);
                return;
